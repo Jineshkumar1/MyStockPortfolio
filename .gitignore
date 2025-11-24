@@ -40,10 +40,6 @@ yarn-error.log*
 # Ignore README folder (contains all other .md files)
 /README/
 
-
-# adding README.md.old
-/README.md.old
-
 # vercel
 .vercel
 
