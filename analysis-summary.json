@@ -1,0 +1,301 @@
+{
+  "repoSummary": "OpenStock is a full-stack Next.js 15 stock market tracking application. It uses React 19, TypeScript, Tailwind CSS v4, MongoDB with Mongoose, Better Auth for authentication, Inngest for background jobs, and integrates with Finnhub API for market data and TradingView widgets. The project is a single Next.js app (not a monorepo) using npm/pnpm as package managers. It includes Docker Compose setup for local MongoDB and has comprehensive documentation in README.md.",
+  "envVariables": [
+    {
+      "name": "NODE_ENV",
+      "required": true,
+      "description": "Environment mode (development/production)",
+      "files": ["database/mongoose.ts"],
+      "example": "development"
+    },
+    {
+      "name": "MONGODB_URI",
+      "required": true,
+      "description": "MongoDB connection string (local Docker or Atlas)",
+      "files": ["database/mongoose.ts", "scripts/test-db.mjs"],
+      "example": "mongodb://root:example@localhost:27017/openstock?authSource=admin"
+    },
+    {
+      "name": "BETTER_AUTH_SECRET",
+      "required": true,
+      "description": "Secret key for Better Auth session encryption",
+      "files": ["lib/better-auth/auth.ts"],
+      "example": "your_better_auth_secret_here"
+    },
+    {
+      "name": "BETTER_AUTH_URL",
+      "required": true,
+      "description": "Base URL for Better Auth (local or production)",
+      "files": ["lib/better-auth/auth.ts"],
+      "example": "http://localhost:3000"
+    },
+    {
+      "name": "FINNHUB_API_KEY",
+      "required": true,
+      "description": "API key from Finnhub.io for market data",
+      "files": ["lib/actions/finnhub.actions.ts"],
+      "example": "your_finnhub_api_key_here"
+    },
+    {
+      "name": "NEXT_PUBLIC_FINNHUB_API_KEY",
+      "required": false,
+      "description": "Client-side Finnhub API key (not recommended for security)",
+      "files": ["lib/actions/finnhub.actions.ts"],
+      "example": ""
+    },
+    {
+      "name": "FINNHUB_BASE_URL",
+      "required": false,
+      "description": "Override Finnhub API base URL (default: https://finnhub.io/api/v1)",
+      "files": ["lib/actions/finnhub.actions.ts"],
+      "example": "https://finnhub.io/api/v1"
+    },
+    {
+      "name": "GEMINI_API_KEY",
+      "required": true,
+      "description": "Google Gemini API key for AI-generated email content",
+      "files": ["lib/inngest/client.ts"],
+      "example": "your_gemini_api_key_here"
+    },
+    {
+      "name": "NODEMAILER_EMAIL",
+      "required": true,
+      "description": "Gmail address for sending emails via Nodemailer",
+      "files": ["lib/nodemailer/index.ts"],
+      "example": "youraddress@gmail.com"
+    },
+    {
+      "name": "NODEMAILER_PASSWORD",
+      "required": true,
+      "description": "Gmail app password (required if 2FA is enabled)",
+      "files": ["lib/nodemailer/index.ts"],
+      "example": "your_gmail_app_password_here"
+    }
+  ],
+  "localRunSteps": [
+    {
+      "step": 1,
+      "title": "Prerequisites",
+      "commands": [
+        "Node.js 20+ installed",
+        "npm or pnpm installed",
+        "MongoDB instance (local Docker or Atlas)",
+        "Finnhub API key from https://finnhub.io/",
+        "Gmail account with app password (for email features)",
+        "Google Gemini API key (optional, for AI features)"
+      ]
+    },
+    {
+      "step": 2,
+      "title": "Install Dependencies",
+      "commands": [
+        "npm install",
+        "# OR",
+        "pnpm install"
+      ]
+    },
+    {
+      "step": 3,
+      "title": "Environment Setup",
+      "commands": [
+        "cp .env.example .env",
+        "# Edit .env with your actual values"
+      ],
+      "note": "For local MongoDB: MONGODB_URI=mongodb://root:example@localhost:27017/openstock?authSource=admin"
+    },
+    {
+      "step": 4,
+      "title": "Verify Database Connection",
+      "commands": [
+        "npm run test:db"
+      ],
+      "expectedOutput": "OK: Connected to MongoDB [db=\"...\", host=\"...\", time=...ms]"
+    },
+    {
+      "step": 5,
+      "title": "Start Development Server",
+      "commands": [
+        "npm run dev"
+      ],
+      "url": "http://localhost:3000"
+    },
+    {
+      "step": 6,
+      "title": "Start Inngest Dev Server (Optional)",
+      "commands": [
+        "npx inngest-cli@latest dev"
+      ],
+      "url": "http://localhost:8288",
+      "note": "Required for background jobs and AI email features"
+    },
+    {
+      "step": 7,
+      "title": "Docker Alternative",
+      "commands": [
+        "docker compose up -d mongodb",
+        "docker compose up -d --build openstock"
+      ],
+      "note": "Update .env with: MONGODB_URI=mongodb://root:example@mongodb:27017/openstock?authSource=admin"
+    }
+  ],
+  "diagnostics": [
+    {
+      "severity": "critical",
+      "issue": "Missing .env.example file",
+      "status": "fixed",
+      "fix": "Created .env.example with all required variables and updated .gitignore"
+    },
+    {
+      "severity": "medium",
+      "issue": "FINNHUB_BASE_URL hardcoded in code",
+      "status": "fixed",
+      "fix": "Made configurable via FINNHUB_BASE_URL environment variable in lib/actions/finnhub.actions.ts"
+    },
+    {
+      "severity": "medium",
+      "issue": "TypeScript/ESLint errors ignored in builds",
+      "status": "pending",
+      "location": "next.config.ts:16-21",
+      "recommendation": "Fix errors instead of ignoring them"
+    },
+    {
+      "severity": "medium",
+      "issue": "Docker Compose doesn't wait for MongoDB health check",
+      "status": "fixed",
+      "fix": "Added condition: service_healthy to depends_on in docker-compose.yml"
+    },
+    {
+      "severity": "low",
+      "issue": "No health check endpoint",
+      "status": "pending",
+      "recommendation": "Add /api/health endpoint for monitoring"
+    },
+    {
+      "severity": "low",
+      "issue": "No test setup",
+      "status": "pending",
+      "recommendation": "Add Jest/Vitest for unit and integration tests"
+    },
+    {
+      "severity": "low",
+      "issue": "No CI/CD configuration",
+      "status": "pending",
+      "recommendation": "Add GitHub Actions or similar CI/CD pipeline"
+    },
+    {
+      "severity": "medium",
+      "issue": "Missing environment variable validation",
+      "status": "pending",
+      "recommendation": "Add startup validation for required env vars"
+    }
+  ],
+  "improvements": [
+    {
+      "category": "Immediate",
+      "items": [
+        {
+          "title": "Create .env.example file",
+          "status": "completed"
+        },
+        {
+          "title": "Make FINNHUB_BASE_URL configurable",
+          "status": "completed"
+        },
+        {
+          "title": "Fix Docker Compose health check",
+          "status": "completed"
+        },
+        {
+          "title": "Add environment variable validation",
+          "status": "pending",
+          "suggestion": "Create lib/env-validation.ts using Zod to validate required env vars on startup"
+        }
+      ]
+    },
+    {
+      "category": "Recommended",
+      "items": [
+        {
+          "title": "Add health check API endpoint",
+          "suggestion": "Create app/api/health/route.ts that checks MongoDB connection and returns status"
+        },
+        {
+          "title": "Remove TypeScript/ESLint ignore flags",
+          "suggestion": "Fix actual errors in next.config.ts instead of ignoring them"
+        },
+        {
+          "title": "Add startup script for env validation",
+          "suggestion": "Create scripts/validate-env.ts to check all required variables before app starts"
+        },
+        {
+          "title": "Add Docker healthcheck for app service",
+          "suggestion": "Add healthcheck to docker-compose.yml for the openstock service"
+        }
+      ]
+    },
+    {
+      "category": "Best Practices",
+      "items": [
+        {
+          "title": "Add pre-commit hooks",
+          "suggestion": "Use Husky + lint-staged for code quality checks"
+        },
+        {
+          "title": "Add CI/CD pipeline",
+          "suggestion": "GitHub Actions for automated testing and deployment"
+        },
+        {
+          "title": "Add unit and integration tests",
+          "suggestion": "Jest/Vitest for testing utilities and components"
+        },
+        {
+          "title": "Add error monitoring",
+          "suggestion": "Integrate Sentry or similar for production error tracking"
+        },
+        {
+          "title": "Add rate limiting",
+          "suggestion": "Protect API routes and authentication endpoints from abuse"
+        }
+      ]
+    }
+  ],
+  "generatedFile": "plan.md created/updated successfully",
+  "portInfo": {
+    "nextjs": 3000,
+    "mongodb": 27017,
+    "inngest": 8288
+  },
+  "troubleshooting": {
+    "portConflicts": {
+      "3000": "Next.js dev server - use PORT=3001 npm run dev to change",
+      "27017": "MongoDB - change in docker-compose.yml or use Atlas"
+    },
+    "commonIssues": [
+      {
+        "issue": "MongoDB connection fails",
+        "solutions": [
+          "Verify MongoDB is running: docker ps",
+          "Check MONGODB_URI in .env is correct",
+          "For Docker: ensure container is healthy before starting app"
+        ]
+      },
+      {
+        "issue": "Inngest functions not triggering",
+        "solutions": [
+          "Verify Inngest dev server is running",
+          "Check /api/inngest route is accessible",
+          "Verify GEMINI_API_KEY is set for AI features"
+        ]
+      },
+      {
+        "issue": "Emails not sending",
+        "solutions": [
+          "Use Gmail app password (not regular password if 2FA enabled)",
+          "Verify NODEMAILER_EMAIL and NODEMAILER_PASSWORD are correct",
+          "Check Gmail security settings"
+        ]
+      }
+    ]
+  }
+}
+
