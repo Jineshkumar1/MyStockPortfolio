@@ -7,7 +7,46 @@ import { cache } from 'react';
 const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api/v1';
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
 
+// Parse the base URL to extract the allowed hostname
+const ALLOWED_HOSTNAME = (() => {
+    try {
+        const baseUrl = new URL(FINNHUB_BASE_URL);
+        return baseUrl.hostname;
+    } catch {
+        // Fallback to default if parsing fails
+        return 'finnhub.io';
+    }
+})();
+
+/**
+ * Validates that a URL is safe to fetch from by ensuring it points to the allowed Finnhub domain.
+ * This prevents Server-Side Request Forgery (SSRF) attacks.
+ */
+function validateUrl(url: string): void {
+    try {
+        const parsedUrl = new URL(url);
+        
+        // Ensure the hostname matches the allowed Finnhub hostname
+        if (parsedUrl.hostname !== ALLOWED_HOSTNAME) {
+            throw new Error(`Invalid hostname: ${parsedUrl.hostname}. Only requests to ${ALLOWED_HOSTNAME} are allowed.`);
+        }
+        
+        // Ensure the protocol is HTTPS
+        if (parsedUrl.protocol !== 'https:') {
+            throw new Error(`Invalid protocol: ${parsedUrl.protocol}. Only HTTPS requests are allowed.`);
+        }
+    } catch (error) {
+        if (error instanceof TypeError) {
+            throw new Error(`Invalid URL format: ${url}`);
+        }
+        throw error;
+    }
+}
+
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
+    // Validate URL to prevent SSRF attacks
+    validateUrl(url);
+    
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
         : { cache: 'no-store' };
