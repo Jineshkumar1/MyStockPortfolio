@@ -3,10 +3,10 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { removeBulkFromWatchlist } from "@/lib/actions/watchlist.actions";
 import WatchlistTable from "./WatchlistTable";
-import AIInsights from "./AIInsights";
 import NewsSummary from "./NewsSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,20 @@ import {
     SelectValue 
 } from "@/components/ui/select";
 import { Filter, X, RefreshCw } from "lucide-react";
+
+// Dynamically import AIInsights to reduce initial bundle size
+const AIInsights = dynamic(() => import("./AIInsights"), {
+    loading: () => (
+        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="flex items-center gap-2 mb-4">
+                <div className="w-5 h-5 bg-gray-700 rounded animate-pulse" />
+                <div className="h-5 w-40 bg-gray-700 rounded animate-pulse" />
+            </div>
+            <div className="h-20 bg-gray-700 rounded animate-pulse" />
+        </div>
+    ),
+    ssr: false, // AIInsights is interactive, no need for SSR
+});
 
 interface EnhancedWatchlistClientProps {
     initialItems: WatchlistItemWithPrice[];

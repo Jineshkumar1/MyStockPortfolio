@@ -4,6 +4,11 @@ import { getNews } from '@/lib/actions/finnhub.actions';
 import { getAlertsForSymbols } from '@/lib/actions/alert.actions';
 import EnhancedWatchlistClient from '@/components/EnhancedWatchlistClient';
 
+// Route segment config for optimal caching
+export const dynamic = 'force-dynamic'; // Required for user-specific data
+export const revalidate = 0; // Always fetch fresh data for watchlist
+export const fetchCache = 'force-no-store'; // Don't cache user-specific data
+
 export default async function WatchlistPage() {
     const watchlistItems = await getWatchlistItems();
     const symbols = watchlistItems.map(item => item.symbol);
