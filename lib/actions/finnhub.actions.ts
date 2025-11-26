@@ -7,125 +7,12 @@ import { cache } from 'react';
 const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api/v1';
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
 
-// Parse the base URL to extract the allowed hostname and origin
-const BASE_URL_PARSED = (() => {
-    try {
-        return new URL(FINNHUB_BASE_URL);
-    } catch {
-        // Fallback to default if parsing fails
-        return new URL('https://finnhub.io/api/v1');
-    }
-})();
-
-const ALLOWED_HOSTNAME = BASE_URL_PARSED.hostname;
-
-/**
- * Sanitizes user input for safe logging to prevent log injection attacks.
- * Removes control characters, limits length, and ensures safe string representation.
- */
-function sanitizeForLogging(input: unknown): string {
-    if (input === null || input === undefined) {
-        return '[null]';
-    }
-    
-    const str = String(input);
-    // Remove all control characters (including newlines, carriage returns, etc.)
-    // Limit length to prevent log flooding
-    const sanitized = str
-        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
-        .replace(/[^\x20-\x7E]/g, '') // Remove non-printable characters
-        .substring(0, 100); // Limit length
-    
-    // Use JSON.stringify for additional safety (escapes special characters)
-    try {
-        return JSON.stringify(sanitized);
-    } catch {
-        return '[invalid]';
-    }
-}
-
-// Whitelist of allowed API paths to prevent path traversal attacks
-const ALLOWED_PATHS = new Set([
-    '/quote',
-    '/company-news',
-    '/news',
-    '/stock/profile2',
-    '/stock/metric',
-    '/calendar/earnings',
-    '/search',
-]);
-
-/**
- * Safely constructs a URL for Finnhub API requests.
- * This prevents SSRF attacks by:
- * 1. Using a whitelist of allowed paths
- * 2. Only allowing user input in query parameters (never in path or hostname)
- * 3. Validating the final URL points to the allowed domain
- */
-function buildFinnhubUrl(
-    path: string,
-    params: Record<string, string | number | undefined>
-): string {
-    // Validate path is in whitelist to prevent path traversal
-    if (!ALLOWED_PATHS.has(path)) {
-        throw new Error(`Path "${path}" is not in the allowed paths whitelist`);
-    }
-    
-    // Construct URL using URL API to safely handle query parameters
-    const url = new URL(path, BASE_URL_PARSED);
-    
-    // Add query parameters using URLSearchParams (safely encodes values)
-    Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-            url.searchParams.append(key, String(value));
-        }
-    });
-    
-    // Final validation: ensure the constructed URL is safe
-    if (url.hostname !== ALLOWED_HOSTNAME) {
-        throw new Error(`Invalid hostname: ${url.hostname}. Only requests to ${ALLOWED_HOSTNAME} are allowed.`);
-    }
-    
-    if (url.protocol !== 'https:') {
-        throw new Error(`Invalid protocol: ${url.protocol}. Only HTTPS requests are allowed.`);
-    }
-    
-    return url.toString();
-}
-
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
-    // Additional validation as a safety net - validate URL before fetch to prevent SSRF
-    let validatedUrl: URL;
-    try {
-        validatedUrl = new URL(url);
-        // Explicit validation to prevent SSRF - ensure hostname and protocol match allowed values
-        if (validatedUrl.hostname !== ALLOWED_HOSTNAME) {
-            throw new Error(`SSRF protection: Invalid hostname ${validatedUrl.hostname}. Only ${ALLOWED_HOSTNAME} is allowed.`);
-        }
-        if (validatedUrl.protocol !== 'https:') {
-            throw new Error(`SSRF protection: Invalid protocol ${validatedUrl.protocol}. Only HTTPS is allowed.`);
-        }
-    } catch (error) {
-        if (error instanceof TypeError) {
-            throw new Error(`Invalid URL format: ${url}`);
-        }
-        throw error;
-    }
-    
-    // Re-construct URL from validated components to ensure safety
-    const safeUrl = `${validatedUrl.protocol}//${validatedUrl.hostname}${validatedUrl.pathname}${validatedUrl.search}`;
-    
-    // Final validation before fetch
-    const finalUrl = new URL(safeUrl);
-    if (finalUrl.hostname !== ALLOWED_HOSTNAME || finalUrl.protocol !== 'https:') {
-        throw new Error(`SSRF protection: URL validation failed`);
-    }
-    
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
         : { cache: 'no-store' };
 
-    const res = await fetch(finalUrl.toString(), options);
+    const res = await fetch(url, options);
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Fetch failed ${res.status}: ${text}`);
@@ -163,16 +50,11 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
         // Fetch quotes in parallel (batch requests)
         const quotePromises = cleanSymbols.map(async (symbol) => {
             try {
-                const url = buildFinnhubUrl('/quote', { symbol, token });
+                const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${token}`;
                 const quote = await fetchJSON<StockQuote>(url, 30); // Cache for 30 seconds
                 return { symbol, quote };
             } catch (e) {
-                // Use safe logging to prevent log injection
-                const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-                console.error('Error fetching quote', {
-                    symbol: sanitizeForLogging(symbol),
-                    error: errorMsg
-                });
+                console.error(`Error fetching quote for ${symbol}:`, e);
                 return { symbol, quote: null };
             }
         });
@@ -181,8 +63,7 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
         const quotes: Record<string, StockQuote> = {};
 
         results.forEach(({ symbol, quote }) => {
-            // Validate quote structure to prevent remote property injection
-            if (quote && typeof quote === 'object' && 'c' in quote && typeof quote.c === 'number') {
+            if (quote && quote.c !== undefined) {
                 quotes[symbol] = quote;
             }
         });
@@ -214,37 +95,12 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
             await Promise.all(
                 cleanSymbols.map(async (sym) => {
                     try {
-                        // Sanitize symbol to prevent remote property injection when used as object key
-                        // Only allow alphanumeric characters and common stock symbol characters
-                        const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
-                        if (!sanitizedSymbol || sanitizedSymbol !== sym) {
-                            // Symbol was modified during sanitization, skip it
-                            return;
-                        }
-                        
-                        const url = buildFinnhubUrl('/company-news', {
-                            symbol: sanitizedSymbol,
-                            from: range.from,
-                            to: range.to,
-                            token,
-                        });
+                        const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(sym)}&from=${range.from}&to=${range.to}&token=${token}`;
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
-                        // Validate that articles is an array to prevent remote property injection
-                        const articlesArray = Array.isArray(articles) ? articles : [];
-                        // Use sanitized symbol as key to prevent remote property injection
-                        perSymbolArticles[sanitizedSymbol] = articlesArray.filter(validateArticle);
+                        perSymbolArticles[sym] = (articles || []).filter(validateArticle);
                     } catch (e) {
-                        // Use safe logging to prevent log injection
-                        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-                        console.error('Error fetching company news', {
-                            symbol: sanitizeForLogging(sym),
-                            error: errorMsg
-                        });
-                        // Sanitize symbol before using as key to prevent remote property injection
-                        const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
-                        if (sanitizedSymbol && sanitizedSymbol === sym) {
-                            perSymbolArticles[sanitizedSymbol] = [];
-                        }
+                        console.error('Error fetching company news for', sym, e);
+                        perSymbolArticles[sym] = [];
                     }
                 })
             );
@@ -254,10 +110,7 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
             for (let round = 0; round < maxArticles; round++) {
                 for (let i = 0; i < cleanSymbols.length; i++) {
                     const sym = cleanSymbols[i];
-                    // Sanitize symbol when accessing to match the key used during storage
-                    const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
-                    if (!sanitizedSymbol || sanitizedSymbol !== sym) continue;
-                    const list = perSymbolArticles[sanitizedSymbol] || [];
+                    const list = perSymbolArticles[sym] || [];
                     if (list.length === 0) continue;
                     const article = list.shift();
                     if (!article || !validateArticle(article)) continue;
@@ -276,7 +129,7 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
         }
 
         // General market news fallback or when no symbols provided
-        const generalUrl = buildFinnhubUrl('/news', { category: 'general', token });
+        const generalUrl = `${FINNHUB_BASE_URL}/news?category=general&token=${token}`;
         const general = await fetchJSON<RawNewsArticle[]>(generalUrl, 300);
 
         const seen = new Set<string>();
@@ -293,9 +146,7 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
         const formatted = unique.slice(0, maxArticles).map((a, idx) => formatArticle(a, false, undefined, idx));
         return formatted;
     } catch (err) {
-        // Use safe logging to prevent log injection
-        const errorMsg = err instanceof Error ? sanitizeForLogging(err.message) : 'Unknown error';
-        console.error('getNews error', { error: errorMsg });
+        console.error('getNews error:', err);
         throw new Error('Failed to fetch news');
     }
 }
@@ -321,39 +172,27 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
 
         // Fetch company profile for market cap
         try {
-            const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: upperSymbol, token });
+            const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(upperSymbol)}&token=${token}`;
             const profile = await fetchJSON<any>(profileUrl, 3600);
-            // Validate property type to prevent remote property injection
-            if (profile && typeof profile === 'object' && 'marketCapitalization' in profile && typeof profile.marketCapitalization === 'number') {
+            if (profile?.marketCapitalization) {
                 financials.marketCap = profile.marketCapitalization;
             }
         } catch (e) {
-            // Use safe logging to prevent log injection
-            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-            console.error('Error fetching profile', {
-                symbol: sanitizeForLogging(upperSymbol),
-                error: errorMsg
-            });
+            console.error(`Error fetching profile for ${upperSymbol}:`, e);
         }
 
         // Fetch stock metrics for P/E, EPS
         try {
-            const metricsUrl = buildFinnhubUrl('/stock/metric', { symbol: upperSymbol, metric: 'all', token });
+            const metricsUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(upperSymbol)}&metric=all&token=${token}`;
             const metrics = await fetchJSON<any>(metricsUrl, 3600);
-            // Validate metric structure to prevent remote property injection
-            if (metrics && typeof metrics === 'object' && 'metric' in metrics && metrics.metric && typeof metrics.metric === 'object') {
+            if (metrics?.metric) {
                 const metric = metrics.metric;
-                if (typeof metric.peBasicTTM === 'number') financials.pe = metric.peBasicTTM;
-                if (typeof metric.epsTTM === 'number') financials.eps = metric.epsTTM;
-                if (typeof metric.dividendYieldIndicatedAnnual === 'number') financials.dividendYield = metric.dividendYieldIndicatedAnnual * 100; // Convert to percentage
+                if (metric.peBasicTTM) financials.pe = metric.peBasicTTM;
+                if (metric.epsTTM) financials.eps = metric.epsTTM;
+                if (metric.dividendYieldIndicatedAnnual) financials.dividendYield = metric.dividendYieldIndicatedAnnual * 100; // Convert to percentage
             }
         } catch (e) {
-            // Use safe logging to prevent log injection
-            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-            console.error('Error fetching metrics', {
-                symbol: sanitizeForLogging(upperSymbol),
-                error: errorMsg
-            });
+            console.error(`Error fetching metrics for ${upperSymbol}:`, e);
         }
 
         // Fetch earnings calendar
@@ -364,27 +203,16 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
             const fromDate = today.toISOString().split('T')[0];
             const toDate = nextMonth.toISOString().split('T')[0];
             
-            const earningsUrl = buildFinnhubUrl('/calendar/earnings', {
-                from: fromDate,
-                to: toDate,
-                symbol: upperSymbol,
-                token,
-            });
+            const earningsUrl = `${FINNHUB_BASE_URL}/calendar/earnings?from=${fromDate}&to=${toDate}&symbol=${encodeURIComponent(upperSymbol)}&token=${token}`;
             const earnings = await fetchJSON<any>(earningsUrl, 3600);
-            // Validate earnings structure to prevent remote property injection
-            if (earnings && typeof earnings === 'object' && 'earningsCalendar' in earnings && Array.isArray(earnings.earningsCalendar) && earnings.earningsCalendar.length > 0) {
+            if (earnings?.earningsCalendar && earnings.earningsCalendar.length > 0) {
                 const nextEarnings = earnings.earningsCalendar[0];
-                if (nextEarnings && typeof nextEarnings === 'object' && 'date' in nextEarnings && typeof nextEarnings.date === 'string') {
+                if (nextEarnings.date) {
                     financials.earningsDate = nextEarnings.date;
                 }
             }
         } catch (e) {
-            // Use safe logging to prevent log injection
-            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-            console.error('Error fetching earnings', {
-                symbol: sanitizeForLogging(upperSymbol),
-                error: errorMsg
-            });
+            console.error(`Error fetching earnings for ${upperSymbol}:`, e);
         }
 
         return financials;
@@ -413,17 +241,12 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             const profiles = await Promise.all(
                 top.map(async (sym) => {
                     try {
-                        const url = buildFinnhubUrl('/stock/profile2', { symbol: sym, token });
+                        const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(sym)}&token=${token}`;
                         // Revalidate every hour
                         const profile = await fetchJSON<any>(url, 3600);
                         return { sym, profile } as { sym: string; profile: any };
                     } catch (e) {
-                        // Use safe logging to prevent log injection
-                        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-                        console.error('Error fetching profile2', {
-                            symbol: sanitizeForLogging(sym),
-                            error: errorMsg
-                        });
+                        console.error('Error fetching profile2 for', sym, e);
                         return { sym, profile: null } as { sym: string; profile: any };
                     }
                 })
@@ -432,15 +255,8 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             results = profiles
                 .map(({ sym, profile }) => {
                     const symbol = sym.toUpperCase();
-                    // Validate profile structure to prevent remote property injection
-                    const name: string | undefined = (profile && typeof profile === 'object' && 'name' in profile && typeof profile.name === 'string') 
-                        ? profile.name 
-                        : (profile && typeof profile === 'object' && 'ticker' in profile && typeof profile.ticker === 'string')
-                        ? profile.ticker
-                        : undefined;
-                    const exchange: string | undefined = (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string')
-                        ? profile.exchange
-                        : undefined;
+                    const name: string | undefined = profile?.name || profile?.ticker || undefined;
+                    const exchange: string | undefined = profile?.exchange || undefined;
                     if (!name) return undefined;
                     const r: FinnhubSearchResult = {
                         symbol,
@@ -456,7 +272,7 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                 })
                 .filter((x): x is FinnhubSearchResult => Boolean(x));
         } else {
-            const url = buildFinnhubUrl('/search', { q: trimmed, token });
+            const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(trimmed)}&token=${token}`;
             const data = await fetchJSON<FinnhubSearchResponse>(url, 1800);
             results = Array.isArray(data?.result) ? data.result : [];
             
@@ -465,34 +281,22 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             if (upperQuery.length <= 5 && /^[A-Z]+$/.test(upperQuery) && results.length === 0) {
                 try {
                     // Try fetching profile directly for exact symbol match
-                    const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: upperQuery, token });
+                    const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(upperQuery)}&token=${token}`;
                     const profile = await fetchJSON<any>(profileUrl, 1800);
-                    // Validate profile structure to prevent remote property injection
-                    if (profile && typeof profile === 'object' && 'ticker' in profile && typeof profile.ticker === 'string') {
-                        const ticker = profile.ticker.toUpperCase();
-                        const name = (profile && typeof profile === 'object' && 'name' in profile && typeof profile.name === 'string')
-                            ? profile.name
-                            : ticker;
+                    if (profile && profile.ticker) {
                         const result: FinnhubSearchResult = {
-                            symbol: ticker,
-                            description: name,
-                            displaySymbol: ticker,
+                            symbol: profile.ticker.toUpperCase(),
+                            description: profile.name || profile.ticker,
+                            displaySymbol: profile.ticker,
                             type: 'Common Stock',
                         };
-                        // Attach exchange information from profile (validate type)
-                        if (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string') {
-                            (result as any).__exchange = profile.exchange;
-                        }
+                        // Attach exchange information from profile
+                        (result as any).__exchange = profile.exchange;
                         results = [result];
                     }
                 } catch (e) {
                     // Fallback failed, continue with empty results
-                    // Use safe logging to prevent log injection
-                    const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-                    console.error('Direct symbol lookup failed', {
-                        query: sanitizeForLogging(upperQuery),
-                        error: errorMsg
-                    });
+                    console.error('Direct symbol lookup failed for', upperQuery, e);
                 }
             }
             
@@ -507,10 +311,9 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                     await Promise.all(
                         resultsWithoutExchange.map(async (r) => {
                             try {
-                                const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: r.symbol, token });
+                                const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(r.symbol)}&token=${token}`;
                                 const profile = await fetchJSON<any>(profileUrl, 1800);
-                                // Validate exchange property to prevent remote property injection
-                                if (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string') {
+                                if (profile && profile.exchange) {
                                     (r as any).__exchange = profile.exchange;
                                 }
                             } catch {
@@ -561,9 +364,7 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
 
         return mapped;
     } catch (err) {
-        // Use safe logging to prevent log injection
-        const errorMsg = err instanceof Error ? sanitizeForLogging(err.message) : 'Unknown error';
-        console.error('Error in stock search', { error: errorMsg });
+        console.error('Error in stock search:', err);
         return [];
     }
 });

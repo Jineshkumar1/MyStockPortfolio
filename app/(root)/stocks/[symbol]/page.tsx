@@ -13,28 +13,6 @@ import {
 import { getWatchlistItems } from "@/lib/actions/watchlist.actions";
 import { getStockQuotes, searchStocks, fetchJSON } from "@/lib/actions/finnhub.actions";
 
-/**
- * Sanitizes user input for safe logging to prevent log injection attacks.
- */
-function sanitizeForLogging(input: unknown): string {
-    if (input === null || input === undefined) {
-        return '[null]';
-    }
-    
-    const str = String(input);
-    // Remove all control characters and limit length
-    const sanitized = str
-        .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
-        .replace(/[^\x20-\x7E]/g, '')
-        .substring(0, 100);
-    
-    try {
-        return JSON.stringify(sanitized);
-    } catch {
-        return '[invalid]';
-    }
-}
-
 export default async function StockDetails({ params }: StockDetailsPageProps) {
     const { symbol } = await params;
     const upperSymbol = symbol.toUpperCase();
@@ -63,35 +41,21 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
         if (token) {
             const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(upperSymbol)}&token=${token}`;
             const profile = await fetchJSON<any>(profileUrl, 1800);
-            // Validate profile structure to prevent remote property injection
-            if (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string') {
+            if (profile?.exchange) {
                 exchange = profile.exchange;
-                console.log('Fetched exchange from profile', {
-                    symbol: sanitizeForLogging(upperSymbol),
-                    exchange: sanitizeForLogging(exchange)
-                });
+                console.log(`✓ Fetched exchange for ${upperSymbol} from profile:`, exchange);
             } else {
-                console.warn('No exchange in profile', {
-                    symbol: sanitizeForLogging(upperSymbol)
-                });
+                console.warn(`⚠ No exchange in profile for ${upperSymbol}, profile:`, profile);
             }
         }
     } catch (e) {
-        // Use safe logging to prevent log injection
-        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
-        console.error('Failed to fetch exchange profile', {
-            symbol: sanitizeForLogging(upperSymbol),
-            error: errorMsg
-        });
+        console.error(`✗ Failed to fetch exchange profile for ${upperSymbol}:`, e);
     }
     
     // Fallback to search results if profile fetch failed
     if (!exchange && stockInfo?.exchange && stockInfo.exchange !== 'US' && stockInfo.exchange !== upperSymbol) {
         exchange = stockInfo.exchange;
-        console.log('Using exchange from search results', {
-            symbol: sanitizeForLogging(upperSymbol),
-            exchange: sanitizeForLogging(exchange)
-        });
+        console.log(`Using exchange from search results for ${upperSymbol}:`, exchange);
     }
     
     // Normalize exchange names for TradingView (e.g., "Nasdaq Stock Market" -> "NASDAQ")
