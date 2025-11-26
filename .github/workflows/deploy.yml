@@ -27,7 +27,7 @@ on:
       # Add deployment platform specific secrets below
       VERCEL_TOKEN:
         required: true
-      VERCEL_ORG:
+      VERCEL_ORG_ID:
         required: true
       VERCEL_PROJECT_ID:
         required: true
@@ -59,7 +59,7 @@ jobs:
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org: ${{ secrets.VERCEL_ORG }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           vercel-args: ${{ inputs.environment == 'production' && '--prod' || '--preview' }}
           working-directory: ./
