@@ -113,6 +113,14 @@ jobs:
           echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** Environment variables are passed to Vercel during deployment." >> $GITHUB_STEP_SUMMARY
-          echo "Make sure all environment variables are also configured in Vercel dashboard." >> $GITHUB_STEP_SUMMARY
+          echo "## ⚠️ Important: Configure Environment Variables" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Environment variables were passed during build, but you **must** configure them in Vercel dashboard for runtime:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to [Vercel Dashboard](https://vercel.com/dashboard) → Your Project → Settings → Environment Variables" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add all required variables (see .github/VERCEL_ENV_SETUP.md)" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Important:** Set \`BETTER_AUTH_URL\` to your Vercel domain (not localhost)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Redeploy after adding variables" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📚 See [VERCEL_ENV_SETUP.md](.github/VERCEL_ENV_SETUP.md) for detailed instructions" >> $GITHUB_STEP_SUMMARY
 
