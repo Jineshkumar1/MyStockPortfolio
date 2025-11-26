@@ -2,7 +2,7 @@ import { Schema, model, models, type Document, type Model } from 'mongoose';
 
 export interface RateLimitDocument extends Document {
     userId: string;
-    model: string;
+    modelName: string;
     requests: Array<{
         timestamp: Date;
     }>;
@@ -15,7 +15,7 @@ export interface RateLimitDocument extends Document {
 const RateLimitSchema = new Schema<RateLimitDocument>(
     {
         userId: { type: String, required: true, index: true },
-        model: { type: String, required: true, index: true },
+        modelName: { type: String, required: true, index: true },
         requests: [{
             timestamp: { type: Date, required: true }
         }],
@@ -26,7 +26,7 @@ const RateLimitSchema = new Schema<RateLimitDocument>(
 );
 
 // Compound index for efficient queries
-RateLimitSchema.index({ userId: 1, model: 1 }, { unique: true });
+RateLimitSchema.index({ userId: 1, modelName: 1 }, { unique: true });
 
 // Auto-cleanup old requests (older than 1 minute)
 RateLimitSchema.pre('save', function() {

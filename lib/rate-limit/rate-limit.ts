@@ -28,7 +28,7 @@ export async function checkRateLimit(
         const now = new Date();
         
         // Find or create rate limit record
-        let rateLimit = await RateLimit.findOne({ userId, model });
+        let rateLimit = await RateLimit.findOne({ userId, modelName: model });
         
         if (!rateLimit) {
             // Create new record with daily reset at end of day
@@ -37,7 +37,7 @@ export async function checkRateLimit(
             
             rateLimit = new RateLimit({
                 userId,
-                model,
+                modelName: model,
                 requests: [],
                 dailyCount: 0,
                 dailyResetAt: resetAt,
@@ -126,7 +126,7 @@ export async function recordRequest(
         
         const now = new Date();
         
-        let rateLimit = await RateLimit.findOne({ userId, model });
+        let rateLimit = await RateLimit.findOne({ userId, modelName: model });
         
         if (!rateLimit) {
             const resetAt = new Date(now);
@@ -134,7 +134,7 @@ export async function recordRequest(
             
             rateLimit = new RateLimit({
                 userId,
-                model,
+                modelName: model,
                 requests: [{ timestamp: now }],
                 dailyCount: 1,
                 dailyResetAt: resetAt,

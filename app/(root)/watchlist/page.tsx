@@ -18,7 +18,7 @@ export default async function WatchlistPage() {
     // Combine watchlist items with quotes
     const itemsWithPrices: WatchlistItemWithPrice[] = watchlistItems.map(item => ({
         ...item,
-        quote: quotes[item.symbol],
+        quote: (quotes as Record<string, StockQuote | undefined>)[item.symbol],
     }));
 
     return <EnhancedWatchlistClient 
