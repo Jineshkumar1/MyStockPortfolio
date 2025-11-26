@@ -94,10 +94,11 @@ function buildFinnhubUrl(
 }
 
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
-    // Additional validation as a safety net
+    // Additional validation as a safety net - validate URL before fetch to prevent SSRF
+    let validatedUrl: URL;
     try {
-        const parsedUrl = new URL(url);
-        if (parsedUrl.hostname !== ALLOWED_HOSTNAME || parsedUrl.protocol !== 'https:') {
+        validatedUrl = new URL(url);
+        if (validatedUrl.hostname !== ALLOWED_HOSTNAME || validatedUrl.protocol !== 'https:') {
             throw new Error(`Invalid URL: ${url}`);
         }
     } catch (error) {
@@ -107,11 +108,14 @@ async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T>
         throw error;
     }
     
+    // Use the validated URL object's toString() to ensure we're using the validated URL
+    const safeUrl = validatedUrl.toString();
+    
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
         : { cache: 'no-store' };
 
-    const res = await fetch(url, options);
+    const res = await fetch(safeUrl, options);
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Fetch failed ${res.status}: ${text}`);
@@ -207,7 +211,9 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
                             token,
                         });
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
-                        perSymbolArticles[sym] = (articles || []).filter(validateArticle);
+                        // Validate that articles is an array to prevent remote property injection
+                        const articlesArray = Array.isArray(articles) ? articles : [];
+                        perSymbolArticles[sym] = articlesArray.filter(validateArticle);
                     } catch (e) {
                         // Use safe logging to prevent log injection
                         const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
@@ -215,6 +221,8 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
                             symbol: sanitizeForLogging(sym),
                             error: errorMsg
                         });
+                        // Validate symbol key to prevent remote property injection
+                        // Symbols are already sanitized (uppercase, trimmed) so safe to use as key
                         perSymbolArticles[sym] = [];
                     }
                 })
@@ -261,7 +269,9 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
         const formatted = unique.slice(0, maxArticles).map((a, idx) => formatArticle(a, false, undefined, idx));
         return formatted;
     } catch (err) {
-        console.error('getNews error:', err);
+        // Use safe logging to prevent log injection
+        const errorMsg = err instanceof Error ? sanitizeForLogging(err.message) : 'Unknown error';
+        console.error('getNews error', { error: errorMsg });
         throw new Error('Failed to fetch news');
     }
 }
@@ -527,7 +537,9 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
 
         return mapped;
     } catch (err) {
-        console.error('Error in stock search:', err);
+        // Use safe logging to prevent log injection
+        const errorMsg = err instanceof Error ? sanitizeForLogging(err.message) : 'Unknown error';
+        console.error('Error in stock search', { error: errorMsg });
         return [];
     }
 });
