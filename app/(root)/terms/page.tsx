@@ -144,7 +144,7 @@ export default function TermsPage() {
           </p>
           <ul className="text-gray-200 space-y-2 ml-6">
             <li>• We aim for 99.9% uptime, but stuff happens (we&apos;re human!)</li>
-            <li>• We&apos;ll give advance notice for planned maintenance</li>
+            <li>• We'll give advance notice for planned maintenance</li>
             <li>• Major outages will be communicated on our status page and Discord</li>
             <li>• We&apos;re building sustainable infrastructure, not just cheap hosting</li>
           </ul>
