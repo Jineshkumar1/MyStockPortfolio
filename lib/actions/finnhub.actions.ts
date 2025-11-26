@@ -7,33 +7,74 @@ import { cache } from 'react';
 const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api/v1';
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
 
-// Parse the base URL to extract the allowed hostname
-const ALLOWED_HOSTNAME = (() => {
+// Parse the base URL to extract the allowed hostname and origin
+const BASE_URL_PARSED = (() => {
     try {
-        const baseUrl = new URL(FINNHUB_BASE_URL);
-        return baseUrl.hostname;
+        return new URL(FINNHUB_BASE_URL);
     } catch {
         // Fallback to default if parsing fails
-        return 'finnhub.io';
+        return new URL('https://finnhub.io/api/v1');
     }
 })();
 
+const ALLOWED_HOSTNAME = BASE_URL_PARSED.hostname;
+const ALLOWED_ORIGIN = BASE_URL_PARSED.origin;
+
+// Whitelist of allowed API paths to prevent path traversal attacks
+const ALLOWED_PATHS = new Set([
+    '/quote',
+    '/company-news',
+    '/news',
+    '/stock/profile2',
+    '/stock/metric',
+    '/calendar/earnings',
+    '/search',
+]);
+
 /**
- * Validates that a URL is safe to fetch from by ensuring it points to the allowed Finnhub domain.
- * This prevents Server-Side Request Forgery (SSRF) attacks.
+ * Safely constructs a URL for Finnhub API requests.
+ * This prevents SSRF attacks by:
+ * 1. Using a whitelist of allowed paths
+ * 2. Only allowing user input in query parameters (never in path or hostname)
+ * 3. Validating the final URL points to the allowed domain
  */
-function validateUrl(url: string): void {
+function buildFinnhubUrl(
+    path: string,
+    params: Record<string, string | number | undefined>
+): string {
+    // Validate path is in whitelist to prevent path traversal
+    if (!ALLOWED_PATHS.has(path)) {
+        throw new Error(`Path "${path}" is not in the allowed paths whitelist`);
+    }
+    
+    // Construct URL using URL API to safely handle query parameters
+    const url = new URL(path, BASE_URL_PARSED);
+    
+    // Add query parameters using URLSearchParams (safely encodes values)
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+            url.searchParams.append(key, String(value));
+        }
+    });
+    
+    // Final validation: ensure the constructed URL is safe
+    if (url.hostname !== ALLOWED_HOSTNAME) {
+        throw new Error(`Invalid hostname: ${url.hostname}. Only requests to ${ALLOWED_HOSTNAME} are allowed.`);
+    }
+    
+    if (url.protocol !== 'https:') {
+        throw new Error(`Invalid protocol: ${url.protocol}. Only HTTPS requests are allowed.`);
+    }
+    
+    return url.toString();
+}
+
+async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
+    // Additional validation as a safety net
     try {
         const parsedUrl = new URL(url);
-        
-        // Ensure the hostname matches the allowed Finnhub hostname
-        if (parsedUrl.hostname !== ALLOWED_HOSTNAME) {
-            throw new Error(`Invalid hostname: ${parsedUrl.hostname}. Only requests to ${ALLOWED_HOSTNAME} are allowed.`);
-        }
-        
-        // Ensure the protocol is HTTPS
-        if (parsedUrl.protocol !== 'https:') {
-            throw new Error(`Invalid protocol: ${parsedUrl.protocol}. Only HTTPS requests are allowed.`);
+        if (parsedUrl.hostname !== ALLOWED_HOSTNAME || parsedUrl.protocol !== 'https:') {
+            throw new Error(`Invalid URL: ${url}`);
         }
     } catch (error) {
         if (error instanceof TypeError) {
@@ -41,11 +82,6 @@ function validateUrl(url: string): void {
         }
         throw error;
     }
-}
-
-async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
-    // Validate URL to prevent SSRF attacks
-    validateUrl(url);
     
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
@@ -89,7 +125,7 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
         // Fetch quotes in parallel (batch requests)
         const quotePromises = cleanSymbols.map(async (symbol) => {
             try {
-                const url = `${FINNHUB_BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&token=${token}`;
+                const url = buildFinnhubUrl('/quote', { symbol, token });
                 const quote = await fetchJSON<StockQuote>(url, 30); // Cache for 30 seconds
                 return { symbol, quote };
             } catch (e) {
@@ -134,7 +170,12 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
             await Promise.all(
                 cleanSymbols.map(async (sym) => {
                     try {
-                        const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(sym)}&from=${range.from}&to=${range.to}&token=${token}`;
+                        const url = buildFinnhubUrl('/company-news', {
+                            symbol: sym,
+                            from: range.from,
+                            to: range.to,
+                            token,
+                        });
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
                         perSymbolArticles[sym] = (articles || []).filter(validateArticle);
                     } catch (e) {
@@ -168,7 +209,7 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
         }
 
         // General market news fallback or when no symbols provided
-        const generalUrl = `${FINNHUB_BASE_URL}/news?category=general&token=${token}`;
+        const generalUrl = buildFinnhubUrl('/news', { category: 'general', token });
         const general = await fetchJSON<RawNewsArticle[]>(generalUrl, 300);
 
         const seen = new Set<string>();
@@ -211,7 +252,7 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
 
         // Fetch company profile for market cap
         try {
-            const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(upperSymbol)}&token=${token}`;
+            const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: upperSymbol, token });
             const profile = await fetchJSON<any>(profileUrl, 3600);
             if (profile?.marketCapitalization) {
                 financials.marketCap = profile.marketCapitalization;
@@ -222,7 +263,7 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
 
         // Fetch stock metrics for P/E, EPS
         try {
-            const metricsUrl = `${FINNHUB_BASE_URL}/stock/metric?symbol=${encodeURIComponent(upperSymbol)}&metric=all&token=${token}`;
+            const metricsUrl = buildFinnhubUrl('/stock/metric', { symbol: upperSymbol, metric: 'all', token });
             const metrics = await fetchJSON<any>(metricsUrl, 3600);
             if (metrics?.metric) {
                 const metric = metrics.metric;
@@ -242,7 +283,12 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
             const fromDate = today.toISOString().split('T')[0];
             const toDate = nextMonth.toISOString().split('T')[0];
             
-            const earningsUrl = `${FINNHUB_BASE_URL}/calendar/earnings?from=${fromDate}&to=${toDate}&symbol=${encodeURIComponent(upperSymbol)}&token=${token}`;
+            const earningsUrl = buildFinnhubUrl('/calendar/earnings', {
+                from: fromDate,
+                to: toDate,
+                symbol: upperSymbol,
+                token,
+            });
             const earnings = await fetchJSON<any>(earningsUrl, 3600);
             if (earnings?.earningsCalendar && earnings.earningsCalendar.length > 0) {
                 const nextEarnings = earnings.earningsCalendar[0];
@@ -280,7 +326,7 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             const profiles = await Promise.all(
                 top.map(async (sym) => {
                     try {
-                        const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(sym)}&token=${token}`;
+                        const url = buildFinnhubUrl('/stock/profile2', { symbol: sym, token });
                         // Revalidate every hour
                         const profile = await fetchJSON<any>(url, 3600);
                         return { sym, profile } as { sym: string; profile: any };
