@@ -28,6 +28,9 @@ jobs:
     name: Build and Test
     uses: ./.github/workflows/build.yml
     secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: read
 
   deploy:
     name: Deploy Application
@@ -35,6 +38,9 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
+    permissions:
+      contents: read
+      deployments: write
     with:
       environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
       build_artifact_name: build-artifact

@@ -22,7 +22,8 @@ if (!apiKey) {
 }
 
 console.log('🔑 Testing Gemini API Key...');
-console.log(`API Key: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}\n`);
+// Security: Do not log API key, even partially
+console.log('API Key: [REDACTED]\n');
 
 // Initialize with API key (or let it auto-detect from env)
 const client = apiKey ? new GoogleGenAI({ apiKey }) : new GoogleGenAI({});

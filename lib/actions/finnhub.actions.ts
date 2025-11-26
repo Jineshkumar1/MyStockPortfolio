@@ -18,7 +18,6 @@ const BASE_URL_PARSED = (() => {
 })();
 
 const ALLOWED_HOSTNAME = BASE_URL_PARSED.hostname;
-const ALLOWED_ORIGIN = BASE_URL_PARSED.origin;
 
 // Whitelist of allowed API paths to prevent path traversal attacks
 const ALLOWED_PATHS = new Set([
@@ -129,7 +128,9 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
                 const quote = await fetchJSON<StockQuote>(url, 30); // Cache for 30 seconds
                 return { symbol, quote };
             } catch (e) {
-                console.error(`Error fetching quote for ${symbol}:`, e);
+                // Sanitize symbol to prevent log injection
+                const sanitizedSymbol = String(symbol).replace(/[\r\n]/g, '');
+                console.error('Error fetching quote for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
                 return { symbol, quote: null };
             }
         });
@@ -138,7 +139,8 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
         const quotes: Record<string, StockQuote> = {};
 
         results.forEach(({ symbol, quote }) => {
-            if (quote && quote.c !== undefined) {
+            // Validate quote structure to prevent remote property injection
+            if (quote && typeof quote === 'object' && 'c' in quote && typeof quote.c === 'number') {
                 quotes[symbol] = quote;
             }
         });
@@ -179,7 +181,9 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
                         perSymbolArticles[sym] = (articles || []).filter(validateArticle);
                     } catch (e) {
-                        console.error('Error fetching company news for', sym, e);
+                        // Sanitize symbol to prevent log injection
+                        const sanitizedSym = String(sym).replace(/[\r\n]/g, '');
+                        console.error('Error fetching company news for symbol:', sanitizedSym, e instanceof Error ? e.message : 'Unknown error');
                         perSymbolArticles[sym] = [];
                     }
                 })
@@ -254,25 +258,31 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
         try {
             const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: upperSymbol, token });
             const profile = await fetchJSON<any>(profileUrl, 3600);
-            if (profile?.marketCapitalization) {
+            // Validate property type to prevent remote property injection
+            if (profile && typeof profile === 'object' && 'marketCapitalization' in profile && typeof profile.marketCapitalization === 'number') {
                 financials.marketCap = profile.marketCapitalization;
             }
         } catch (e) {
-            console.error(`Error fetching profile for ${upperSymbol}:`, e);
+            // Sanitize symbol to prevent log injection
+            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
+            console.error('Error fetching profile for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
         }
 
         // Fetch stock metrics for P/E, EPS
         try {
             const metricsUrl = buildFinnhubUrl('/stock/metric', { symbol: upperSymbol, metric: 'all', token });
             const metrics = await fetchJSON<any>(metricsUrl, 3600);
-            if (metrics?.metric) {
+            // Validate metric structure to prevent remote property injection
+            if (metrics && typeof metrics === 'object' && 'metric' in metrics && metrics.metric && typeof metrics.metric === 'object') {
                 const metric = metrics.metric;
-                if (metric.peBasicTTM) financials.pe = metric.peBasicTTM;
-                if (metric.epsTTM) financials.eps = metric.epsTTM;
-                if (metric.dividendYieldIndicatedAnnual) financials.dividendYield = metric.dividendYieldIndicatedAnnual * 100; // Convert to percentage
+                if (typeof metric.peBasicTTM === 'number') financials.pe = metric.peBasicTTM;
+                if (typeof metric.epsTTM === 'number') financials.eps = metric.epsTTM;
+                if (typeof metric.dividendYieldIndicatedAnnual === 'number') financials.dividendYield = metric.dividendYieldIndicatedAnnual * 100; // Convert to percentage
             }
         } catch (e) {
-            console.error(`Error fetching metrics for ${upperSymbol}:`, e);
+            // Sanitize symbol to prevent log injection
+            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
+            console.error('Error fetching metrics for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
         }
 
         // Fetch earnings calendar
@@ -290,14 +300,17 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
                 token,
             });
             const earnings = await fetchJSON<any>(earningsUrl, 3600);
-            if (earnings?.earningsCalendar && earnings.earningsCalendar.length > 0) {
+            // Validate earnings structure to prevent remote property injection
+            if (earnings && typeof earnings === 'object' && 'earningsCalendar' in earnings && Array.isArray(earnings.earningsCalendar) && earnings.earningsCalendar.length > 0) {
                 const nextEarnings = earnings.earningsCalendar[0];
-                if (nextEarnings.date) {
+                if (nextEarnings && typeof nextEarnings === 'object' && 'date' in nextEarnings && typeof nextEarnings.date === 'string') {
                     financials.earningsDate = nextEarnings.date;
                 }
             }
         } catch (e) {
-            console.error(`Error fetching earnings for ${upperSymbol}:`, e);
+            // Sanitize symbol to prevent log injection
+            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
+            console.error('Error fetching earnings for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
         }
 
         return financials;
@@ -331,7 +344,9 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                         const profile = await fetchJSON<any>(url, 3600);
                         return { sym, profile } as { sym: string; profile: any };
                     } catch (e) {
-                        console.error('Error fetching profile2 for', sym, e);
+                        // Sanitize symbol to prevent log injection
+                        const sanitizedSym = String(sym).replace(/[\r\n]/g, '');
+                        console.error('Error fetching profile2 for symbol:', sanitizedSym, e instanceof Error ? e.message : 'Unknown error');
                         return { sym, profile: null } as { sym: string; profile: any };
                     }
                 })
@@ -340,8 +355,15 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             results = profiles
                 .map(({ sym, profile }) => {
                     const symbol = sym.toUpperCase();
-                    const name: string | undefined = profile?.name || profile?.ticker || undefined;
-                    const exchange: string | undefined = profile?.exchange || undefined;
+                    // Validate profile structure to prevent remote property injection
+                    const name: string | undefined = (profile && typeof profile === 'object' && 'name' in profile && typeof profile.name === 'string') 
+                        ? profile.name 
+                        : (profile && typeof profile === 'object' && 'ticker' in profile && typeof profile.ticker === 'string')
+                        ? profile.ticker
+                        : undefined;
+                    const exchange: string | undefined = (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string')
+                        ? profile.exchange
+                        : undefined;
                     if (!name) return undefined;
                     const r: FinnhubSearchResult = {
                         symbol,
@@ -357,7 +379,7 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                 })
                 .filter((x): x is FinnhubSearchResult => Boolean(x));
         } else {
-            const url = `${FINNHUB_BASE_URL}/search?q=${encodeURIComponent(trimmed)}&token=${token}`;
+            const url = buildFinnhubUrl('/search', { q: trimmed, token });
             const data = await fetchJSON<FinnhubSearchResponse>(url, 1800);
             results = Array.isArray(data?.result) ? data.result : [];
             
@@ -366,22 +388,31 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
             if (upperQuery.length <= 5 && /^[A-Z]+$/.test(upperQuery) && results.length === 0) {
                 try {
                     // Try fetching profile directly for exact symbol match
-                    const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(upperQuery)}&token=${token}`;
+                    const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: upperQuery, token });
                     const profile = await fetchJSON<any>(profileUrl, 1800);
-                    if (profile && profile.ticker) {
+                    // Validate profile structure to prevent remote property injection
+                    if (profile && typeof profile === 'object' && 'ticker' in profile && typeof profile.ticker === 'string') {
+                        const ticker = profile.ticker.toUpperCase();
+                        const name = (profile && typeof profile === 'object' && 'name' in profile && typeof profile.name === 'string')
+                            ? profile.name
+                            : ticker;
                         const result: FinnhubSearchResult = {
-                            symbol: profile.ticker.toUpperCase(),
-                            description: profile.name || profile.ticker,
-                            displaySymbol: profile.ticker,
+                            symbol: ticker,
+                            description: name,
+                            displaySymbol: ticker,
                             type: 'Common Stock',
                         };
-                        // Attach exchange information from profile
-                        (result as any).__exchange = profile.exchange;
+                        // Attach exchange information from profile (validate type)
+                        if (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string') {
+                            (result as any).__exchange = profile.exchange;
+                        }
                         results = [result];
                     }
                 } catch (e) {
                     // Fallback failed, continue with empty results
-                    console.error('Direct symbol lookup failed for', upperQuery, e);
+                    // Sanitize query to prevent log injection
+                    const sanitizedQuery = String(upperQuery).replace(/[\r\n]/g, '');
+                    console.error('Direct symbol lookup failed for query:', sanitizedQuery, e instanceof Error ? e.message : 'Unknown error');
                 }
             }
             
@@ -396,9 +427,10 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                     await Promise.all(
                         resultsWithoutExchange.map(async (r) => {
                             try {
-                                const profileUrl = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(r.symbol)}&token=${token}`;
+                                const profileUrl = buildFinnhubUrl('/stock/profile2', { symbol: r.symbol, token });
                                 const profile = await fetchJSON<any>(profileUrl, 1800);
-                                if (profile && profile.exchange) {
+                                // Validate exchange property to prevent remote property injection
+                                if (profile && typeof profile === 'object' && 'exchange' in profile && typeof profile.exchange === 'string') {
                                     (r as any).__exchange = profile.exchange;
                                 }
                             } catch {
