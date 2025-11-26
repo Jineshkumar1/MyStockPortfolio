@@ -1,0 +1,118 @@
+name: Deploy Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      build_artifact_name:
+        required: true
+        type: string
+    secrets:
+      MONGODB_URI:
+        required: true
+      BETTER_AUTH_SECRET:
+        required: true
+      BETTER_AUTH_URL:
+        required: true
+      FINNHUB_API_KEY:
+        required: true
+      GEMINI_API_KEY:
+        required: true
+      NODEMAILER_EMAIL:
+        required: true
+      NODEMAILER_PASSWORD:
+        required: true
+      # Add deployment platform specific secrets below
+      VERCEL_TOKEN:
+        required: true
+      VERCEL_ORG:
+        required: true
+      VERCEL_PROJECT_ID:
+        required: true
+      # AWS_ACCESS_KEY_ID:
+      #   required: false
+      # AWS_SECRET_ACCESS_KEY:
+      #   required: false
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org: ${{ secrets.VERCEL_ORG }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '--preview' }}
+          working-directory: ./
+        env:
+          # Vercel will use these environment variables during build
+          # Make sure they're also set in Vercel dashboard for runtime
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NODEMAILER_EMAIL: ${{ secrets.NODEMAILER_EMAIL }}
+          NODEMAILER_PASSWORD: ${{ secrets.NODEMAILER_PASSWORD }}
+
+      # AWS S3 + CloudFront Deployment Example (uncomment and configure if using AWS)
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+      #
+      # - name: Deploy to S3
+      #   run: |
+      #     aws s3 sync .next/static s3://${{ secrets.S3_BUCKET_NAME }}/_next/static
+      #     aws s3 sync public s3://${{ secrets.S3_BUCKET_NAME }}/public
+      #     aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+      # Docker Deployment Example (uncomment and configure if using Docker)
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
+      #
+      # - name: Build and push Docker image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     push: true
+      #     tags: ${{ secrets.DOCKER_USERNAME }}/openstock:${{ github.sha }}
+
+
+      - name: Generate deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Code checked out" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Node.js environment set up" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚀 Deployed to Vercel **${{ inputs.environment }}** environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Environment variables are passed to Vercel during deployment." >> $GITHUB_STEP_SUMMARY
+          echo "Make sure all environment variables are also configured in Vercel dashboard." >> $GITHUB_STEP_SUMMARY
+
