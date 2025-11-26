@@ -23,7 +23,8 @@ export const connectToDatabase = async () => {
     }
 
     if(!MONGODB_URI){
-        throw new Error("MongoDB URI is missing");
+        console.error("MongoDB URI is missing. Please set MONGODB_URI environment variable.");
+        throw new Error("MongoDB URI is missing. Please configure MONGODB_URI in Vercel dashboard.");
     }
 
     if(cached.conn) return cached.conn;
