@@ -16,6 +16,12 @@ if (!cached){
 }
 
 export const connectToDatabase = async () => {
+    // Skip database connection during build time
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+        // Return a mock connection during build
+        return mongoose;
+    }
+
     if(!MONGODB_URI){
         throw new Error("MongoDB URI is missing");
     }

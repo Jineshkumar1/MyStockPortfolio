@@ -244,3 +244,44 @@ Keep it educational and general. Do NOT recommend specific stocks. Focus on help
         return { success: false, error: error.message || 'Failed to generate recommendation' };
     }
 }
+
+export async function explainMarketNews(article: MarketNewsArticle): Promise<{ success: boolean; explanation?: string; error?: string }> {
+    try {
+        // Check rate limit
+        const session = await auth.api.getSession({ headers: await headers() });
+        if (session?.user?.id) {
+            const rateLimitCheck = await checkRateLimit(session.user.id, 'gemini-2.5-flash');
+            if (!rateLimitCheck.allowed) {
+                return { 
+                    success: false, 
+                    error: rateLimitCheck.error || 'Rate limit exceeded. Please try again later.' 
+                };
+            }
+        }
+
+        const prompt = `Explain this market news article in simple terms for someone learning about investing:
+
+Headline: ${article.headline}
+${article.summary ? `Summary: ${article.summary}` : ''}
+${article.source ? `Source: ${article.source}` : ''}
+
+Provide:
+1. What this news means in plain language (2-3 sentences)
+2. Why it might matter to investors (1-2 sentences)
+3. Key context or background if relevant (1-2 sentences)
+
+Keep it educational, clear, and avoid jargon. Total: 100-150 words.`;
+
+        const explanation = await generateText(prompt, 'gemini-2.5-flash');
+        
+        // Record the request
+        if (session?.user?.id) {
+            await recordRequest(session.user.id, 'gemini-2.5-flash');
+        }
+        
+        return { success: true, explanation };
+    } catch (error: any) {
+        console.error('explainMarketNews error:', error);
+        return { success: false, error: error.message || 'Failed to explain news' };
+    }
+}

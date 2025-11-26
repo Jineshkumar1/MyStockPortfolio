@@ -1,5 +1,6 @@
 'use server';
 
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/database/mongoose';
 import { Watchlist } from '@/database/models/watchlist.model';
 import { auth } from '@/lib/better-auth/auth';
