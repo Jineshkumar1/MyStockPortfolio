@@ -8,11 +8,38 @@ const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
 
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
+    // Additional validation as a safety net - validate URL before fetch to prevent SSRF
+    let validatedUrl: URL;
+    try {
+        validatedUrl = new URL(url);
+        // Explicit validation to prevent SSRF - ensure hostname and protocol match allowed values
+        if (validatedUrl.hostname !== ALLOWED_HOSTNAME) {
+            throw new Error(`SSRF protection: Invalid hostname ${validatedUrl.hostname}. Only ${ALLOWED_HOSTNAME} is allowed.`);
+        }
+        if (validatedUrl.protocol !== 'https:') {
+            throw new Error(`SSRF protection: Invalid protocol ${validatedUrl.protocol}. Only HTTPS is allowed.`);
+        }
+    } catch (error) {
+        if (error instanceof TypeError) {
+            throw new Error(`Invalid URL format: ${url}`);
+        }
+        throw error;
+    }
+    
+    // Re-construct URL from validated components to ensure safety
+    const safeUrl = `${validatedUrl.protocol}//${validatedUrl.hostname}${validatedUrl.pathname}${validatedUrl.search}`;
+    
+    // Final validation before fetch
+    const finalUrl = new URL(safeUrl);
+    if (finalUrl.hostname !== ALLOWED_HOSTNAME || finalUrl.protocol !== 'https:') {
+        throw new Error(`SSRF protection: URL validation failed`);
+    }
+    
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
         : { cache: 'no-store' };
 
-    const res = await fetch(url, options);
+    const res = await fetch(finalUrl.toString(), options);
     if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Fetch failed ${res.status}: ${text}`);
@@ -95,12 +122,37 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
             await Promise.all(
                 cleanSymbols.map(async (sym) => {
                     try {
-                        const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(sym)}&from=${range.from}&to=${range.to}&token=${token}`;
+                        // Sanitize symbol to prevent remote property injection when used as object key
+                        // Only allow alphanumeric characters and common stock symbol characters
+                        const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
+                        if (!sanitizedSymbol || sanitizedSymbol !== sym) {
+                            // Symbol was modified during sanitization, skip it
+                            return;
+                        }
+                        
+                        const url = buildFinnhubUrl('/company-news', {
+                            symbol: sanitizedSymbol,
+                            from: range.from,
+                            to: range.to,
+                            token,
+                        });
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
-                        perSymbolArticles[sym] = (articles || []).filter(validateArticle);
+                        // Validate that articles is an array to prevent remote property injection
+                        const articlesArray = Array.isArray(articles) ? articles : [];
+                        // Use sanitized symbol as key to prevent remote property injection
+                        perSymbolArticles[sanitizedSymbol] = articlesArray.filter(validateArticle);
                     } catch (e) {
-                        console.error('Error fetching company news for', sym, e);
-                        perSymbolArticles[sym] = [];
+                        // Use safe logging to prevent log injection
+                        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+                        console.error('Error fetching company news', {
+                            symbol: sanitizeForLogging(sym),
+                            error: errorMsg
+                        });
+                        // Sanitize symbol before using as key to prevent remote property injection
+                        const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
+                        if (sanitizedSymbol && sanitizedSymbol === sym) {
+                            perSymbolArticles[sanitizedSymbol] = [];
+                        }
                     }
                 })
             );
@@ -110,7 +162,10 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
             for (let round = 0; round < maxArticles; round++) {
                 for (let i = 0; i < cleanSymbols.length; i++) {
                     const sym = cleanSymbols[i];
-                    const list = perSymbolArticles[sym] || [];
+                    // Sanitize symbol when accessing to match the key used during storage
+                    const sanitizedSymbol = sym.replace(/[^A-Z0-9.-]/g, '').toUpperCase();
+                    if (!sanitizedSymbol || sanitizedSymbol !== sym) continue;
+                    const list = perSymbolArticles[sanitizedSymbol] || [];
                     if (list.length === 0) continue;
                     const article = list.shift();
                     if (!article || !validateArticle(article)) continue;
