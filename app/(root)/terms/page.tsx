@@ -74,7 +74,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-100 mb-4">🛡️ Investment Disclaimer (The Important Stuff)</h2>
           <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-6">
-            <p className="text-yellow-200 font-medium mb-2">Let's be crystal clear about this:</p>
+            <p className="text-yellow-200 font-medium mb-2">Let&apos;s be crystal clear about this:</p>
             <div className="text-gray-200 space-y-3">
               <p>
                 <strong>MyStockPortfolio is an educational and analysis tool, not investment advice.</strong>
@@ -99,7 +99,7 @@ export default function TermsPage() {
           </p>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-200 mb-2">✨ What We'd Love</h3>
+              <h3 className="font-semibold text-blue-200 mb-2">✨ What We&apos;d Love</h3>
               <ul className="text-blue-200 text-sm space-y-1">
                 <li>• Share knowledge with other users</li>
                 <li>• Report bugs and suggest improvements</li>
@@ -124,15 +124,15 @@ export default function TermsPage() {
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <p className="text-gray-200 mb-4">
               <strong>Your data belongs to you.</strong> We provide tools to export everything anytime.
-              We'll never claim ownership of your watchlists, notes, or personal information.
+              We&apos;ll never claim ownership of your watchlists, notes, or personal information.
             </p>
             <p className="text-gray-200 mb-4">
               <strong>Market data comes from licensed sources.</strong> While we provide it for free,
-              please respect that it's meant for personal use and learning.
+              please respect that it&apos;s meant for personal use and learning.
             </p>
             <p className="text-gray-200">
               <strong>Community contributions are appreciated.</strong> If you share insights or contribute
-              to discussions, you're helping build a knowledge commons for everyone.
+              to discussions, you&apos;re helping build a knowledge commons for everyone.
             </p>
           </div>
         </section>
@@ -144,7 +144,7 @@ export default function TermsPage() {
           </p>
           <ul className="text-gray-200 space-y-2 ml-6">
             <li>• We aim for 99.9% uptime, but stuff happens (we&apos;re human!)</li>
-            <li>• We'll give advance notice for planned maintenance</li>
+            <li>• We&apos;ll give advance notice for planned maintenance</li>
             <li>• Major outages will be communicated on our status page and Discord</li>
             <li>• We&apos;re building sustainable infrastructure, not just cheap hosting</li>
           </ul>
@@ -158,7 +158,7 @@ export default function TermsPage() {
             </p>
             <ul className="text-gray-200 space-y-2">
               <li>• Community discussion on proposed changes</li>
-              <li>• Clear explanation of what's changing and why</li>
+              <li>• Clear explanation of what&apos;s changing and why</li>
               <li>• Version history available on GitHub</li>
             </ul>
           </div>
