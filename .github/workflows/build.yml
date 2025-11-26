@@ -58,6 +58,7 @@ jobs:
       - name: Build application
         env:
           NODE_ENV: production
+          NEXT_PHASE: phase-production-build
           MONGODB_URI: ${{ secrets.MONGODB_URI || 'mongodb://localhost:27017/test' }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'dummy-secret-for-build-only' }}
           BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL || 'http://localhost:3000' }}
