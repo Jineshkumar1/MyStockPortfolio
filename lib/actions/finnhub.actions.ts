@@ -19,6 +19,31 @@ const BASE_URL_PARSED = (() => {
 
 const ALLOWED_HOSTNAME = BASE_URL_PARSED.hostname;
 
+/**
+ * Sanitizes user input for safe logging to prevent log injection attacks.
+ * Removes control characters, limits length, and ensures safe string representation.
+ */
+function sanitizeForLogging(input: unknown): string {
+    if (input === null || input === undefined) {
+        return '[null]';
+    }
+    
+    const str = String(input);
+    // Remove all control characters (including newlines, carriage returns, etc.)
+    // Limit length to prevent log flooding
+    const sanitized = str
+        .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+        .replace(/[^\x20-\x7E]/g, '') // Remove non-printable characters
+        .substring(0, 100); // Limit length
+    
+    // Use JSON.stringify for additional safety (escapes special characters)
+    try {
+        return JSON.stringify(sanitized);
+    } catch {
+        return '[invalid]';
+    }
+}
+
 // Whitelist of allowed API paths to prevent path traversal attacks
 const ALLOWED_PATHS = new Set([
     '/quote',
@@ -128,9 +153,12 @@ export async function getStockQuotes(symbols: string[]): Promise<Record<string, 
                 const quote = await fetchJSON<StockQuote>(url, 30); // Cache for 30 seconds
                 return { symbol, quote };
             } catch (e) {
-                // Sanitize symbol to prevent log injection
-                const sanitizedSymbol = String(symbol).replace(/[\r\n]/g, '');
-                console.error('Error fetching quote for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
+                // Use safe logging to prevent log injection
+                const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+                console.error('Error fetching quote', {
+                    symbol: sanitizeForLogging(symbol),
+                    error: errorMsg
+                });
                 return { symbol, quote: null };
             }
         });
@@ -181,9 +209,12 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
                         const articles = await fetchJSON<RawNewsArticle[]>(url, 300);
                         perSymbolArticles[sym] = (articles || []).filter(validateArticle);
                     } catch (e) {
-                        // Sanitize symbol to prevent log injection
-                        const sanitizedSym = String(sym).replace(/[\r\n]/g, '');
-                        console.error('Error fetching company news for symbol:', sanitizedSym, e instanceof Error ? e.message : 'Unknown error');
+                        // Use safe logging to prevent log injection
+                        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+                        console.error('Error fetching company news', {
+                            symbol: sanitizeForLogging(sym),
+                            error: errorMsg
+                        });
                         perSymbolArticles[sym] = [];
                     }
                 })
@@ -263,9 +294,12 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
                 financials.marketCap = profile.marketCapitalization;
             }
         } catch (e) {
-            // Sanitize symbol to prevent log injection
-            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
-            console.error('Error fetching profile for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
+            // Use safe logging to prevent log injection
+            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+            console.error('Error fetching profile', {
+                symbol: sanitizeForLogging(upperSymbol),
+                error: errorMsg
+            });
         }
 
         // Fetch stock metrics for P/E, EPS
@@ -280,9 +314,12 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
                 if (typeof metric.dividendYieldIndicatedAnnual === 'number') financials.dividendYield = metric.dividendYieldIndicatedAnnual * 100; // Convert to percentage
             }
         } catch (e) {
-            // Sanitize symbol to prevent log injection
-            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
-            console.error('Error fetching metrics for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
+            // Use safe logging to prevent log injection
+            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+            console.error('Error fetching metrics', {
+                symbol: sanitizeForLogging(upperSymbol),
+                error: errorMsg
+            });
         }
 
         // Fetch earnings calendar
@@ -308,9 +345,12 @@ export async function getCompanyFinancials(symbol: string): Promise<CompanyFinan
                 }
             }
         } catch (e) {
-            // Sanitize symbol to prevent log injection
-            const sanitizedSymbol = String(upperSymbol).replace(/[\r\n]/g, '');
-            console.error('Error fetching earnings for symbol:', sanitizedSymbol, e instanceof Error ? e.message : 'Unknown error');
+            // Use safe logging to prevent log injection
+            const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+            console.error('Error fetching earnings', {
+                symbol: sanitizeForLogging(upperSymbol),
+                error: errorMsg
+            });
         }
 
         return financials;
@@ -344,9 +384,12 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                         const profile = await fetchJSON<any>(url, 3600);
                         return { sym, profile } as { sym: string; profile: any };
                     } catch (e) {
-                        // Sanitize symbol to prevent log injection
-                        const sanitizedSym = String(sym).replace(/[\r\n]/g, '');
-                        console.error('Error fetching profile2 for symbol:', sanitizedSym, e instanceof Error ? e.message : 'Unknown error');
+                        // Use safe logging to prevent log injection
+                        const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+                        console.error('Error fetching profile2', {
+                            symbol: sanitizeForLogging(sym),
+                            error: errorMsg
+                        });
                         return { sym, profile: null } as { sym: string; profile: any };
                     }
                 })
@@ -410,9 +453,12 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                     }
                 } catch (e) {
                     // Fallback failed, continue with empty results
-                    // Sanitize query to prevent log injection
-                    const sanitizedQuery = String(upperQuery).replace(/[\r\n]/g, '');
-                    console.error('Direct symbol lookup failed for query:', sanitizedQuery, e instanceof Error ? e.message : 'Unknown error');
+                    // Use safe logging to prevent log injection
+                    const errorMsg = e instanceof Error ? sanitizeForLogging(e.message) : 'Unknown error';
+                    console.error('Direct symbol lookup failed', {
+                        query: sanitizeForLogging(upperQuery),
+                        error: errorMsg
+                    });
                 }
             }
             
