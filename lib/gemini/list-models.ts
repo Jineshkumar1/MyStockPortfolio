@@ -4,8 +4,8 @@ import { getGeminiClient } from './client';
 
 export async function listAvailableModels(): Promise<{ success: boolean; models?: string[]; error?: string }> {
     try {
-        const client = getGeminiClient();
         // Try to list models - this might not be available in all SDK versions
+        // const client = getGeminiClient(); // Reserved for future use
         // For now, return common model names
         return {
             success: true,

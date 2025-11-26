@@ -33,7 +33,7 @@ const AIInsights = memo(function AIInsights({ symbols }: AIInsightsProps) {
                     description: result.error || 'Please try again'
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to generate insights');
         } finally {
             setLoading(false);
@@ -84,7 +84,7 @@ const AIInsights = memo(function AIInsights({ symbols }: AIInsightsProps) {
                 </div>
             ) : (
                 <p className="text-gray-400 text-sm">
-                    Click "Generate Insights" to get AI-powered analysis of your watchlist stocks.
+                    Click &ldquo;Generate Insights&rdquo; to get AI-powered analysis of your watchlist stocks.
                 </p>
             )}
         </div>

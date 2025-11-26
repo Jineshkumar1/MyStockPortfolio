@@ -40,7 +40,7 @@ export default function AIChat({ symbol, price, change }: AIChatProps) {
                     description: result.error || 'Please try again'
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to get answer');
         } finally {
             setLoading(false);
@@ -126,9 +126,9 @@ export default function AIChat({ symbol, price, change }: AIChatProps) {
                 <div className="text-gray-400 text-sm space-y-1">
                     <p>💡 Try asking:</p>
                     <ul className="list-disc list-inside ml-2 space-y-1">
-                        <li>"What is a P/E ratio?"</li>
-                        <li>"How do I read stock charts?"</li>
-                        <li>"What affects stock prices?"</li>
+                        <li>&ldquo;What is a P/E ratio?&rdquo;</li>
+                        <li>&ldquo;How do I read stock charts?&rdquo;</li>
+                        <li>&ldquo;What affects stock prices?&rdquo;</li>
                         {symbol && <li>{`What should I know about ${symbol}?`}</li>}
                     </ul>
                 </div>

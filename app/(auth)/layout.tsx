@@ -24,7 +24,7 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
             <section className="auth-right-section">
                 <div className="z-10 relative lg:mt-4 lg:mb-16">
                     <blockquote className="auth-blockquote">
-                        “For me, MyStockPortfolio isn't just another stock app. It's about giving people clarity and control in the market, without barriers or subscriptions.”
+                        &ldquo;For me, MyStockPortfolio isn&apos;t just another stock app. It&apos;s about giving people clarity and control in the market, without barriers or subscriptions.&rdquo;
                     </blockquote>
                     <div className="flex items-center justify-between">
                         <div>

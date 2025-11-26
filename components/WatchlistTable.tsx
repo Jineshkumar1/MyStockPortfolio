@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import WatchlistButton from "@/components/WatchlistButton";
 import { Button } from "@/components/ui/button";
@@ -62,7 +62,7 @@ export default function WatchlistTable({
                     description: result.error
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to set alert');
         } finally {
             setLoadingSymbol(null);
@@ -79,7 +79,7 @@ export default function WatchlistTable({
             } else {
                 toast.error('Failed to remove alert');
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to remove alert');
         } finally {
             setLoadingSymbol(null);

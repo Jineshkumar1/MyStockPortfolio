@@ -14,7 +14,7 @@ interface StockAnalysisProps {
     quote?: StockQuote;
 }
 
-export default function StockAnalysis({ symbol, currentPrice, change, companyName, quote }: StockAnalysisProps) {
+export default function StockAnalysis({ symbol, currentPrice, change, quote }: StockAnalysisProps) {
     // Use quote data if provided, otherwise use direct price/change props
     const price = currentPrice ?? quote?.c;
     const priceChange = change ?? quote?.dp;
@@ -34,7 +34,7 @@ export default function StockAnalysis({ symbol, currentPrice, change, companyNam
                     description: result.error || 'Please try again'
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to analyze stock');
         } finally {
             setLoading(false);
