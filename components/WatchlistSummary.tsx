@@ -40,7 +40,7 @@ export default function WatchlistSummary({ items }: WatchlistSummaryProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-5">
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-gray-400">Today's Performance</span>
+                    <span className="text-sm font-medium text-gray-400">Today&apos;s Performance</span>
                     <Clock className="w-4 h-4 text-gray-500" />
                 </div>
                 <div

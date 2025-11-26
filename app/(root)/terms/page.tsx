@@ -42,7 +42,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-100 mb-4">🎯 The Basics</h2>
           <p className="text-gray-200 mb-4">
-            By using MyStockPortfolio, you're joining our community. Here's what that means:
+            By using MyStockPortfolio, you&apos;re joining our community. Here&apos;s what that means:
           </p>
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
             <ul className="text-gray-200 space-y-3">
@@ -66,7 +66,7 @@ export default function TermsPage() {
               <li>✅ API access for personal projects</li>
             </ul>
             <p className="text-gray-300 text-sm mt-4 italic">
-              This isn't a "freemium trap" - it's our commitment to making financial tools accessible to everyone.
+              This isn&apos;t a &ldquo;freemium trap&rdquo; - it&apos;s our commitment to making financial tools accessible to everyone.
             </p>
           </div>
         </section>
@@ -81,7 +81,7 @@ export default function TermsPage() {
                 We provide data and tools to help you make informed decisions, but the decisions are yours.
               </p>
               <p>
-                <strong>We're not financial advisors.</strong> We're developers and community members who built
+                <strong>We&apos;re not financial advisors.</strong> We&apos;re developers and community members who built
                 tools we wished existed when we were learning about investing.
               </p>
               <p>
@@ -95,7 +95,7 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-100 mb-4">👥 Your Account & Responsibilities</h2>
           <p className="text-gray-200 mb-4">
-            We trust you to be a good community member. Here's what we ask:
+            We trust you to be a good community member. Here&apos;s what we ask:
           </p>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-blue-900 border border-blue-700 rounded-lg p-4">
@@ -140,13 +140,13 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-100 mb-4">🔧 Service Availability</h2>
           <p className="text-gray-200 mb-4">
-            We're committed to keeping MyStockPortfolio running, but we're also realistic:
+            We&apos;re committed to keeping MyStockPortfolio running, but we&apos;re also realistic:
           </p>
           <ul className="text-gray-200 space-y-2 ml-6">
-            <li>• We aim for 99.9% uptime, but stuff happens (we're human!)</li>
+            <li>• We aim for 99.9% uptime, but stuff happens (we&apos;re human!)</li>
             <li>• We'll give advance notice for planned maintenance</li>
             <li>• Major outages will be communicated on our status page and Discord</li>
-            <li>• We're building sustainable infrastructure, not just cheap hosting</li>
+            <li>• We&apos;re building sustainable infrastructure, not just cheap hosting</li>
           </ul>
         </section>
 
@@ -167,8 +167,8 @@ export default function TermsPage() {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-100 mb-4">🤔 Questions or Concerns?</h2>
           <p className="text-gray-200 mb-4">
-            Legal documents shouldn't be mysterious. If anything here confuses you or seems unfair,
-            let's talk about it.
+            Legal documents shouldn&apos;t be mysterious. If anything here confuses you or seems unfair,
+            let&apos;s talk about it.
           </p>
           <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
             <p className="text-gray-200 mb-2">
@@ -186,8 +186,8 @@ export default function TermsPage() {
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-center">
           <h3 className="text-xl font-semibold text-gray-100 mb-3">The Open Dev Society Way</h3>
           <p className="text-gray-200 mb-2">
-            "We build tools that empower people, create knowledge that's free for all,
-            and foster communities where everyone can grow."
+            &ldquo;We build tools that empower people, create knowledge that&apos;s free for all,
+            and foster communities where everyone can grow.&rdquo;
           </p>
           <p className="text-gray-300 text-sm">
             These terms reflect those values. Thanks for being part of our community. 🚀

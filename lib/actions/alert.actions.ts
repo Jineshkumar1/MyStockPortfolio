@@ -20,7 +20,7 @@ export async function getAlertsForSymbols(symbols: string[]): Promise<Record<str
         const userId = await getCurrentUserId();
         if (!userId || symbols.length === 0) return {};
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         const alerts = await Alert.find({ 
             userId, 
             symbol: { $in: symbols.map(s => s.toUpperCase()) },
@@ -62,7 +62,7 @@ export async function createAlert(
             return { success: false, error: 'Not authenticated' };
         }
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         
         // Check if alert already exists
         const existing = await Alert.findOne({ 
@@ -102,7 +102,7 @@ export async function deleteAlert(symbol: string, alertType: 'upper' | 'lower'):
             return { success: false, error: 'Not authenticated' };
         }
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         await Alert.deleteOne({ 
             userId, 
             symbol: symbol.toUpperCase(), 

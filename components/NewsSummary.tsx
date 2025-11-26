@@ -32,7 +32,7 @@ const NewsSummary = memo(function NewsSummary({ articles }: NewsSummaryProps) {
                     description: result.error || 'Please try again'
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to summarize news');
         } finally {
             setLoading(false);

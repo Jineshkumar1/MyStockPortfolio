@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { removeBulkFromWatchlist } from "@/lib/actions/watchlist.actions";
 import WatchlistTable from "./WatchlistTable";
@@ -32,7 +33,7 @@ export default function EnhancedWatchlistClient({
     const router = useRouter();
     const [items, setItems] = useState(initialItems);
     const [news] = useState(initialNews);
-    const [alerts, setAlerts] = useState(initialAlerts);
+    const [alerts] = useState(initialAlerts);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<string>('addedAt');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -58,8 +59,8 @@ export default function EnhancedWatchlistClient({
         }
 
         filtered.sort((a, b) => {
-            let aVal: any;
-            let bVal: any;
+            let aVal: string | number | undefined;
+            let bVal: string | number | undefined;
 
             switch (sortBy) {
                 case 'company':
@@ -129,21 +130,6 @@ export default function EnhancedWatchlistClient({
         setSelectedItems(prev => prev.filter(s => s !== symbol));
     }, []);
 
-    const handleAddItem = useCallback((symbol: string, company: string) => {
-        // Check if item already exists to prevent duplicates
-        setItems(prev => {
-            const exists = prev.some(item => item.symbol === symbol);
-            if (exists) return prev;
-            // Add new item with minimal data - will be refreshed on next page load
-            return [...prev, {
-                symbol,
-                company,
-                addedAt: new Date().toISOString(),
-                quote: undefined
-            } as WatchlistItemWithPrice];
-        });
-    }, []);
-
     const handleBulkRemove = async (symbols: string[]) => {
         if (symbols.length === 0) return;
         
@@ -159,7 +145,7 @@ export default function EnhancedWatchlistClient({
                     description: result.error
                 });
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to remove stocks');
         }
     };
@@ -200,7 +186,7 @@ export default function EnhancedWatchlistClient({
                         <h2 className="empty-title">Your watchlist is empty</h2>
                         <p className="empty-description">
                             Start building your watchlist by adding stocks you want to track. 
-                            Search for stocks and click "Add to Watchlist" to get started.
+                            Search for stocks and click &ldquo;Add to Watchlist&rdquo; to get started.
                         </p>
                         <Link 
                             href="/" 

@@ -19,7 +19,7 @@ export async function getWatchlistSymbolsByEmail(email: string): Promise<string[
     if (!email) return [];
 
     try {
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         const db = mongoose.connection.db;
         if (!db) throw new Error('MongoDB connection not found');
 
@@ -44,7 +44,7 @@ export async function getWatchlistItems(): Promise<WatchlistItem[]> {
         const userId = await getCurrentUserId();
         if (!userId) return [];
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         const items = await Watchlist.find({ userId }).sort({ addedAt: -1 }).lean();
         return items.map((item) => ({
             userId: String(item.userId),
@@ -65,7 +65,7 @@ export async function addToWatchlist(symbol: string, company: string): Promise<{
             return { success: false, error: 'Not authenticated' };
         }
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         
         // Check if already exists
         const existing = await Watchlist.findOne({ userId, symbol: symbol.toUpperCase() });
@@ -94,7 +94,7 @@ export async function removeFromWatchlist(symbol: string): Promise<{ success: bo
             return { success: false, error: 'Not authenticated' };
         }
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         await Watchlist.deleteOne({ userId, symbol: symbol.toUpperCase() });
 
         return { success: true };
@@ -119,7 +119,7 @@ export async function removeBulkFromWatchlist(symbols: string[]): Promise<{ succ
             return { success: false, error: 'Not authenticated' };
         }
 
-        const mongoose = await connectToDatabase();
+        await connectToDatabase();
         const result = await Watchlist.deleteMany({ 
             userId, 
             symbol: { $in: symbols.map(s => s.toUpperCase()) } 

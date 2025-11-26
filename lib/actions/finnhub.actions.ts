@@ -316,7 +316,7 @@ export const searchStocks = cache(async (query?: string): Promise<StockWithWatch
                                 if (profile && profile.exchange) {
                                     (r as any).__exchange = profile.exchange;
                                 }
-                            } catch (e) {
+                            } catch {
                                 // Silently fail - keep existing exchange or default
                             }
                         })
