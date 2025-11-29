@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - 'development/**'
   pull_request:
     branches:
       - main
@@ -30,7 +29,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/development/')
+    if: github.event_name == 'pull_request'
 
   build:
     name: Build and Test
@@ -41,7 +40,6 @@ jobs:
       pull-requests: read
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
       github.event_name == 'workflow_dispatch'
 
   deploy:
