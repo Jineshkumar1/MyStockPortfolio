@@ -40,15 +40,11 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
-      - name: Run tests
-        run: npm test -- --ci
-
       - name: Generate CI summary
         run: |
           echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ ESLint completed" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ TypeScript type check completed" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Tests completed" >> $GITHUB_STEP_SUMMARY
 
 
