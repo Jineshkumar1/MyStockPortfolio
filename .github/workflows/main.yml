@@ -39,19 +39,30 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      github.event_name == 'workflow_dispatch'
 
   deploy:
     name: Deploy Application
     needs: build
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     permissions:
       contents: read
       deployments: write
     with:
-      environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+      # On workflow_dispatch use selected environment,
+      # on pushes/PRs to main always deploy to production,
+      # otherwise default to staging.
+      environment: ${{ github.event.inputs.environment
+        || ((github.ref == 'refs/heads/main' || (github.event_name == 'pull_request' && github.base_ref == 'main')) && 'production')
+        || 'staging' }}
       build_artifact_name: build-artifact
       
 
