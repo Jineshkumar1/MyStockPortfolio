@@ -9,6 +9,7 @@ on:
     branches:
       - 'development'
       - 'development/**'
+      - 'main'
 
 env:
   NODE_VERSION: '20.x'
