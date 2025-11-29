@@ -24,17 +24,12 @@ on:
         required: true
       NODEMAILER_PASSWORD:
         required: true
-      # Add deployment platform specific secrets below
       VERCEL_TOKEN:
         required: true
       VERCEL_ORG_ID:
         required: true
       VERCEL_PROJECT_ID:
         required: true
-      # AWS_ACCESS_KEY_ID:
-      #   required: false
-      # AWS_SECRET_ACCESS_KEY:
-      #   required: false
 
 env:
   NODE_VERSION: '20.x'
@@ -64,11 +59,9 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '--preview' }}
+          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '' }}
           working-directory: ./
         env:
-          # Vercel will use these environment variables during build
-          # Make sure they're also set in Vercel dashboard for runtime
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
@@ -76,35 +69,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           NODEMAILER_EMAIL: ${{ secrets.NODEMAILER_EMAIL }}
           NODEMAILER_PASSWORD: ${{ secrets.NODEMAILER_PASSWORD }}
-
-      # AWS S3 + CloudFront Deployment Example (uncomment and configure if using AWS)
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-east-1
-      #
-      # - name: Deploy to S3
-      #   run: |
-      #     aws s3 sync .next/static s3://${{ secrets.S3_BUCKET_NAME }}/_next/static
-      #     aws s3 sync public s3://${{ secrets.S3_BUCKET_NAME }}/public
-      #     aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
-
-      # Docker Deployment Example (uncomment and configure if using Docker)
-      # - name: Login to Docker Hub
-      #   uses: docker/login-action@v3
-      #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-      #
-      # - name: Build and push Docker image
-      #   uses: docker/build-push-action@v5
-      #   with:
-      #     context: .
-      #     push: true
-      #     tags: ${{ secrets.DOCKER_USERNAME }}/openstock:${{ github.sha }}
-
 
       - name: Generate deployment summary
         run: |
