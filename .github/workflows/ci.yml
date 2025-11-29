@@ -1,15 +1,22 @@
 name: CI Checks
 
 on:
-  push:
-    branches:
-      - 'development'
-      - 'development/**'
-  pull_request:
-    branches:
-      - 'development'
-      - 'development/**'
-      - 'main'
+  workflow_call:
+    secrets:
+      MONGODB_URI:
+        required: false
+      BETTER_AUTH_SECRET:
+        required: false
+      BETTER_AUTH_URL:
+        required: false
+      FINNHUB_API_KEY:
+        required: false
+      GEMINI_API_KEY:
+        required: false
+      NODEMAILER_EMAIL:
+        required: false
+      NODEMAILER_PASSWORD:
+        required: false
 
 env:
   NODE_VERSION: '20.x'

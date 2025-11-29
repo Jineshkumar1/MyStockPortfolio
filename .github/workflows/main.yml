@@ -4,11 +4,10 @@ on:
   push:
     branches:
       - main
-      - development
+      - 'development/**'
   pull_request:
     branches:
       - main
-      - development
   workflow_dispatch:
     inputs:
       environment:
@@ -24,6 +23,15 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
+  ci:
+    name: Run CI checks
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/development/')
+
   build:
     name: Build and Test
     uses: ./.github/workflows/build.yml
@@ -31,11 +39,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
 
   deploy:
     name: Deploy Application
     needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/development'))
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     permissions:
