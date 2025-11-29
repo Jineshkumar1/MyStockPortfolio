@@ -1,0 +1,54 @@
+name: CI Checks
+
+on:
+  push:
+    branches:
+      - 'development'
+      - 'development/**'
+  pull_request:
+    branches:
+      - 'development'
+      - 'development/**'
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  ci:
+    name: Run CI checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --ci
+
+      - name: Generate CI summary
+        run: |
+          echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dependencies installed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ TypeScript type check completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Tests completed" >> $GITHUB_STEP_SUMMARY
+
+
