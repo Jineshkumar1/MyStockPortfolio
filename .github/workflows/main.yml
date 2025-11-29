@@ -32,15 +32,6 @@ jobs:
       pull-requests: read
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/development/')
 
-  ci:
-    name: Run CI checks
-    uses: ./.github/workflows/ci.yml
-    secrets: inherit
-    permissions:
-      contents: read
-      pull-requests: read
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/development/')
-
   build:
     name: Build and Test
     uses: ./.github/workflows/build.yml
