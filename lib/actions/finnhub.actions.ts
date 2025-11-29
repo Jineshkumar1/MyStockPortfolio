@@ -7,7 +7,32 @@ import { cache } from 'react';
 const FINNHUB_BASE_URL = process.env.FINNHUB_BASE_URL || 'https://finnhub.io/api/v1';
 const NEXT_PUBLIC_FINNHUB_API_KEY = process.env.NEXT_PUBLIC_FINNHUB_API_KEY ?? '';
 
+// Restrict outbound requests from this module to known-safe Finnhub hosts only.
+// This mitigates server-side request forgery (SSRF) when the URL contains
+// values derived from user input (e.g. stock symbols, search queries).
+const ALLOWED_FINNHUB_HOSTS = ['finnhub.io', 'api.finnhub.io'];
+
 async function fetchJSON<T>(url: string, revalidateSeconds?: number): Promise<T> {
+    // Basic SSRF protection: only allow HTTPS requests to approved Finnhub hosts.
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        throw new Error('Invalid Finnhub URL');
+    }
+
+    if (parsed.protocol !== 'https:') {
+        throw new Error('Only HTTPS protocol is allowed for Finnhub requests');
+    }
+
+    const hostnameAllowed = ALLOWED_FINNHUB_HOSTS.some(
+        (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
+    );
+
+    if (!hostnameAllowed) {
+        throw new Error(`Disallowed Finnhub host: ${parsed.hostname}`);
+    }
+
     const options: RequestInit & { next?: { revalidate?: number } } = revalidateSeconds
         ? { cache: 'force-cache', next: { revalidate: revalidateSeconds } }
         : { cache: 'no-store' };

@@ -64,7 +64,11 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '--preview' }}
+          # Vercel CLI 25+ no longer supports the `--preview` flag.
+          # - For production, we pass `--prod`.
+          # - For all other environments (e.g. development, staging), we rely on the default "preview" behavior
+          #   by not passing any explicit mode flag.
+          vercel-args: ${{ inputs.environment == 'production' && '--prod' || '' }}
           working-directory: ./
         env:
           # Vercel will use these environment variables during build
