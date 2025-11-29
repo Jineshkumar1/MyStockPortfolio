@@ -41,21 +41,12 @@ jobs:
       pull-requests: read
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/development/')) ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
-      github.event_name == 'workflow_dispatch'
-    if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' && github.base_ref == 'main') ||
       github.event_name == 'workflow_dispatch'
 
   deploy:
     name: Deploy Application
     needs: build
-    if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
-      github.event_name == 'workflow_dispatch'
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' && github.base_ref == 'main') ||
